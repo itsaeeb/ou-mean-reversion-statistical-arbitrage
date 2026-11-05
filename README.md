@@ -15,7 +15,7 @@ Statistical arbitrage pairs trading exploits temporary divergences in the relati
 1. **Mathematical Rigour:** Formulate the OU continuous-time stochastic differential equation (SDE), solve it via Itô's Lemma, and derive its theoretical expectation, variance, stationary distribution, and half-life.
 2. **Empirical Cointegration & Selection:** Formulate the spread via Ordinary Least Squares (OLS) hedge ratio estimation, evaluate stationarity using the Engle–Granger two-step test on historical training data, and filter candidate pairs by mean-reversion speed.
 3. **Parameter Estimation & Discretisation:** Implement exact analytical AR(1) discretisation and recover continuous OU parameters ($\theta, \mu, \sigma, \sigma_{eq}, t_{1/2}$) across rolling 120-trading-day windows with strict validity checks ($0 < b < 1$) and zero look-ahead bias.
-4. **Simulation & Numerical Validation:** Contrast exact Gaussian discretisation against Euler–Maruyama approximations, assessing estimator accuracy on synthetic paths.
+4. **Simulation & Numerical Validation:** Contrast exact Gaussian discretisation against Euler–Maruyama approximations, verify theoretical moment dynamics via large-scale Monte Carlo, and assess estimator bias on synthetic paths.
 5. **Algorithmic Trading & Out-of-Sample Backtesting:** Design a disciplined Z-score trading strategy with entry, exit, stop-loss thresholds, and transaction frictions (10 bps per leg) evaluated strictly out-of-sample.
 6. **Sensitivity & Performance Evaluation:** Analyze strategy risk-adjusted returns (Sharpe ratio, maximum drawdown, win rate) across variable threshold bands, window lengths, and execution frictions.
 
@@ -78,7 +78,14 @@ $$\widehat{\sigma}_{eq} = \sqrt{\frac{s^2}{1 - \widehat{b}^2}}, \quad s^2 = \fra
 $$\widehat{\sigma} = \widehat{\sigma}_{eq} \sqrt{2\widehat{\theta}} = \sqrt{\frac{2\widehat{\theta} s^2}{1 - \widehat{b}^2}}$$
 *Numerical Constraint:* For stationary mean reversion, the discrete autoregressive coefficient must strictly satisfy $0 < b < 1$. Non-stationary estimates ($b \ge 1.0$ or $b \le 0.0$) are explicitly rejected and flagged with `NaN` parameters without silent clipping.
 
-### 2.6 Standardised Spread (Z-Score) & Trading Strategy Logic
+### 2.6 Euler–Maruyama Discretisation & Stability
+The first-order Euler–Maruyama approximation is given by:
+$$X_{t+\Delta t}^{EM} = X_t^{EM} + \theta(\mu - X_t^{EM})\Delta t + \sigma \sqrt{\Delta t} Z_t = (1 - \theta \Delta t)X_t^{EM} + \theta \mu \Delta t + \sigma \sqrt{\Delta t} Z_t$$
+- Amplification factor: $g = 1 - \theta \Delta t$.
+- Linear stability requirement: $|1 - \theta \Delta t| < 1 \iff \Delta t < \frac{2}{\theta}$.
+- If $\Delta t \ge \frac{2}{\theta}$, Euler–Maruyama becomes **explosively unstable**, whereas exact discretisation remains unconditionally stable (A-stable) for all $\Delta t > 0$.
+
+### 2.7 Standardised Spread (Z-Score) & Trading Strategy Logic
 Normalising the spread by its theoretical equilibrium moments produces the dimensionless Z-score:
 $$s_t = \frac{X_t - \mu}{\sigma_{eq}}$$
 
@@ -98,7 +105,7 @@ The strategy implements a mean-reverting threshold policy:
 | **Phase 1** | **Data Collection & Preprocessing** | Download 6 NSE banking stocks (2019–2026), align trading calendars, compute log prices, generate train/test splits, validate 0 missing values. | **Completed** |
 | **Phase 2** | **Pair Selection & Cointegration Analysis** | Evaluate all 15 candidate pairs on train data, OLS hedge ratios ($\beta$), Engle–Granger tests ($p < 0.05$), AR(1) OU recovery, half-life filter ($5 \le t_{1/2} \le 60$). | **Completed** |
 | **Phase 3** | **OU Parameter Estimation** | Exact AR(1) mapping ($\Delta t = 1/252$), rolling 120-day calibration ($\theta, \mu, \sigma, \sigma_{eq}, t_{1/2}$), fixed $\beta$, validity flags ($0 < b < 1$), and Z-score spread generation. | **Completed** |
-| **Phase 4** | **OU Simulation & Estimator Validation** | Exact vs. Euler–Maruyama numerical discretization, Monte Carlo path generators, theoretical vs empirical variance, estimator bias audits. | *Not Started* |
+| **Phase 4** | **OU Simulation & Numerical Validation** | Exact vs. Euler–Maruyama discretisation, coupled Brownian paths, stability boundaries ($\Delta t < 2/\theta$), 10,000-path Monte Carlo moment checks, and Hurwicz bias analysis. | **Completed** |
 | **Phase 5** | **Trading Strategy & Out-of-Sample Backtesting** | Out-of-sample backtesting (2024–2026), execution logic, portfolio tracking, trade logging, 10 bps transaction costs, stop-loss mechanics. | *Not Started* |
 | **Phase 6** | **Performance Metrics & Benchmark Comparison** | Sharpe ratio, maximum drawdown, win rate, holding periods, turnover, fixed vs. analytical optimal threshold comparisons. | *Not Started* |
 | **Phase 7** | **Report, Presentation & Documentation** | Comprehensive academic project report (3–4 pages), slide deck for viva defense, documentation consolidation. | *Not Started* |
@@ -188,6 +195,38 @@ ou-mean-reversion-statistical-arbitrage/
 │   ├── tests/
 │   │   └── test_phase3.py                      # Unit tests for Phase 3 mathematical calculations
 │   └── run_phase3.py                           # Top-level launcher for Phase 3
+├── Phase_4_OU_Simulation/                      # Phase 4: OU simulation and numerical validation
+│   ├── experiments/
+│   │   ├── discretization_comparison.py        # Experiment 1: Exact vs Euler error scaling across dt & stability
+│   │   ├── moment_validation.py                # Experiment 2: 10,000-path Monte Carlo moment validation vs theory
+│   │   └── parameter_recovery.py               # Experiment 3: Synthetic parameter recovery & Hurwicz bias analysis
+│   ├── results/
+│   │   ├── figures/
+│   │   │   ├── exact_ou_paths.png              # Exact OU path bundle with theoretical +/-2 sigma(t) envelope
+│   │   │   ├── euler_maruyama_paths.png        # Euler-Maruyama simulated path bundle
+│   │   │   ├── exact_vs_euler_paths.png        # 4-panel coupled comparison (Daily, Monthly, Quarterly, Unstable)
+│   │   │   ├── simulation_error_vs_timestep.png# MAE and RMSE scaling monotonically with time step dt
+│   │   │   ├── empirical_vs_theoretical_mean.png # Monte Carlo mean tracking theoretical exponential decay
+│   │   │   ├── empirical_vs_theoretical_variance.png # Monte Carlo variance converging to sigma^2 / (2*theta)
+│   │   │   ├── estimation_bias_vs_theta.png    # Recovery bias plotted across true mean-reversion speeds
+│   │   │   ├── estimation_bias_vs_sigma.png    # Volatility recovery bias plotted across true sigma
+│   │   │   └── parameter_recovery_comparison.png # True vs estimated parity boxplots & Hurwicz bias decay
+│   │   ├── tables/
+│   │   │   ├── discretization_comparison.csv   # Pathwise MAE, RMSE, Max error across time-step sizes
+│   │   │   ├── euler_stability_analysis.csv    # Stability regimes, amplification factors, critical dt
+│   │   │   ├── moment_validation_results.csv   # Theoretical vs empirical mean/variance at time checkpoints
+│   │   │   ├── parameter_recovery_results.csv  # Parameter recovery bias/MAE/RMSE across theta and sigma grid
+│   │   │   └── parameter_recovery_by_sample_size.csv # Hurwicz bias decay across sample sizes N
+│   │   ├── phase_4_summary.md                  # Comprehensive empirical and theoretical methodology report
+│   │   └── phase_4_validation_report.md        # 10-point independent validation audit report (10/10 passed)
+│   ├── scripts/
+│   │   ├── __init__.py                         # Python package marker
+│   │   ├── ou_simulation.py                    # Exact & Euler simulation, coupled engine, stability, moments
+│   │   ├── run_phase4.py                       # Pipeline runner for Phase 4
+│   │   └── validate_phase4.py                  # Independent Phase 4 verification script
+│   ├── tests/
+│   │   └── test_phase4.py                      # Unit tests for Phase 4 simulation engine
+│   └── run_phase4.py                           # Top-level launcher for Phase 4
 ├── Implementation_Plan_OU_Pairs_Trading.md     # Master project blueprint and methodology plan
 ├── requirements.txt                            # Pinned Python package dependencies
 └── README.md                                   # Project documentation and current status
@@ -241,6 +280,21 @@ Using a fixed hedge ratio $\beta$ and rolling windows of exactly 120 trading day
 - **Mean-Reversion Speed ($\theta$):** Averages $16.25 \text{ yr}^{-1}$ (median $13.52 \text{ yr}^{-1}$), confirming active mean-reverting drift.
 - **Half-Life Distribution ($t_{1/2}$):** Median half-life of **$12.9 \text{ trading days}$** (mean $16.6$ days, IQR $[9.3, 19.8]$ days), confirming an optimal holding horizon for statistical arbitrage.
 - **Signal Frequency:** On the standardized spread $s_t$, **38 trading days** triggered long entries ($s_t < -2.0$), **44 trading days** triggered short entries ($s_t > +2.0$), and only **5 trading days** breached the structural stop-loss boundary ($|s_t| \ge 3.5$).
+
+### 5.4 Phase 4: OU Process Simulation and Numerical Validation
+1. **Coupled Pathwise Error Scaling:** Across $500$ coupled paths ($\theta = 13.52, \sigma = 0.25$), pathwise error between exact and Euler discretisation scales with time step:
+   - Daily ($\Delta t = 1/252$): $\text{MAE} = \mathbf{0.001010}$, $\text{RMSE} = \mathbf{0.001309}$ (Monotonically Stable, $g = +0.9463$).
+   - Weekly ($\Delta t = 5/252$): $\text{MAE} = \mathbf{0.005427}$, $\text{RMSE} = \mathbf{0.007067}$.
+   - Monthly ($\Delta t = 21/252$): $\text{MAE} = \mathbf{0.033729}$, $\text{RMSE} = \mathbf{0.046645}$ (Oscillatory Stable, $g = -0.1267$).
+   - Quarterly ($\Delta t = 63/252$): $\text{MAE} = \mathbf{2.678457}$, $\text{RMSE} = \mathbf{4.038285}$ (**Linearly Unstable / Explosive**, $g = -2.3800$).
+2. **Euler–Maruyama Stability Threshold:** Verified linear stability threshold $\Delta t < \frac{2}{\theta}$. When $\theta \Delta t \ge 2$, Euler–Maruyama suffers catastrophic numerical overflow, whereas exact discretisation remains unconditionally stable.
+3. **Monte Carlo Theoretical Moment Convergence ($M = 10,000$ Paths):**
+   - Empirical expectation tracks theoretical decay $\mathbb{E}[X_t] = \mu + (X_0 - \mu)e^{-\theta t}$ within $< 0.15\%$ relative error across all time points.
+   - Empirical asymptotic variance at $t = 3.0$ yr reaches $\mathbf{0.002293}$, closely matching the theoretical bound $\sigma_{eq}^2 = \frac{\sigma^2}{2\theta} = \frac{0.25^2}{2 \times 13.52} = \mathbf{0.002311}$ (relative difference $0.77\%$).
+4. **Parameter Recovery & Hurwicz Bias Analysis:**
+   - In short windows ($N = 120$), OLS AR(1) estimation exhibits positive Hurwicz bias in $\widehat{\theta}$ ($\mathbb{E}[\widehat{\theta}] = 20.07$ vs. true $10.0$).
+   - As sample size increases ($N = 252 \to 500 \to 1235$), the bias decays smoothly to $+0.70$ ($+7\%$).
+   - Volatility $\sigma$ is estimated with near-zero bias across all sample sizes ($\widehat{\sigma} = 0.251$ vs. $0.250$).
 
 ---
 
@@ -319,6 +373,18 @@ python Phase_3_OU_Estimation/scripts/validate_phase3.py
 python -m unittest Phase_3_OU_Estimation/tests/test_phase3.py
 ```
 
+### 7.5 Running Phase 4 (OU Simulation & Numerical Validation)
+```bash
+# Execute Phase 4 full simulation pipeline (all 3 experiments):
+python Phase_4_OU_Simulation/run_phase4.py
+
+# Run Phase 4 independent validation audit:
+python Phase_4_OU_Simulation/scripts/validate_phase4.py
+
+# Run Phase 4 automated unit tests:
+python -m unittest Phase_4_OU_Simulation/tests/test_phase4.py
+```
+
 ---
 
 ## 8. Verified Output Artifacts & Locations
@@ -350,6 +416,18 @@ python -m unittest Phase_3_OU_Estimation/tests/test_phase3.py
 | **Phase 3** | Figure | `Phase_3_OU_Estimation/results/figures/rolling_halflife_HDFCBANK_KOTAKBANK.png` | Rolling half-life with $[5, 60]$ trading day acceptance boundaries |
 | **Phase 3** | Report | `Phase_3_OU_Estimation/results/phase_3_summary.md` | Theoretical formulation, exact discretisation, and findings report |
 | **Phase 3** | Report | `Phase_3_OU_Estimation/results/phase_3_validation_report.md` | 10-point independent validation audit report (10/10 passed) |
+| **Phase 4** | Table | `Phase_4_OU_Simulation/results/tables/discretization_comparison.csv` | Pathwise MAE, RMSE, Max error across time-step sizes |
+| **Phase 4** | Table | `Phase_4_OU_Simulation/results/tables/euler_stability_analysis.csv` | Stability regimes, amplification factors, critical dt |
+| **Phase 4** | Table | `Phase_4_OU_Simulation/results/tables/moment_validation_results.csv` | Theoretical vs empirical mean/variance across time checkpoints |
+| **Phase 4** | Table | `Phase_4_OU_Simulation/results/tables/parameter_recovery_results.csv` | Parameter recovery bias/MAE/RMSE across theta and sigma grid |
+| **Phase 4** | Table | `Phase_4_OU_Simulation/results/tables/parameter_recovery_by_sample_size.csv` | Hurwicz bias decay across sample sizes N |
+| **Phase 4** | Figure | `Phase_4_OU_Simulation/results/figures/exact_vs_euler_paths.png` | 4-panel coupled comparison (Daily, Monthly, Quarterly, Unstable) |
+| **Phase 4** | Figure | `Phase_4_OU_Simulation/results/figures/simulation_error_vs_timestep.png` | Numerical MAE and RMSE scaling with time-step size dt |
+| **Phase 4** | Figure | `Phase_4_OU_Simulation/results/figures/empirical_vs_theoretical_mean.png` | 10,000-path Monte Carlo mean tracking theoretical exponential decay |
+| **Phase 4** | Figure | `Phase_4_OU_Simulation/results/figures/empirical_vs_theoretical_variance.png` | Monte Carlo variance converging to stationary sigma^2 / (2*theta) |
+| **Phase 4** | Figure | `Phase_4_OU_Simulation/results/figures/parameter_recovery_comparison.png` | Parity boxplots and Hurwicz bias decay across sample sizes |
+| **Phase 4** | Report | `Phase_4_OU_Simulation/results/phase_4_summary.md` | Comprehensive simulation and numerical validation report |
+| **Phase 4** | Report | `Phase_4_OU_Simulation/results/phase_4_validation_report.md` | 10-point independent validation audit report (10/10 passed) |
 
 ---
 
@@ -357,14 +435,11 @@ python -m unittest Phase_3_OU_Estimation/tests/test_phase3.py
 
 The remaining research phases outlined in `Implementation_Plan_OU_Pairs_Trading.md` will be sequentially developed:
 
-1. **Phase 4: OU Simulation & Estimator Validation (Upcoming):**
-   - Numerical comparison of exact Gaussian discretization vs. Euler–Maruyama simulation over varying time steps $\Delta t$.
-   - Synthetic Monte Carlo experiments to evaluate parameter recovery bias and standard errors on known parameter sets.
-2. **Phase 5: Trading Strategy & Out-of-Sample Backtesting:**
+1. **Phase 5: Trading Strategy & Out-of-Sample Backtesting (Upcoming):**
    - Implement Z-score state machine (Long entry at $s_t < -2$, Short entry at $s_t > +2$, Exit at $|s_t| \le 0.5$, Stop-loss at $|s_t| \ge 3.5$).
    - Run event-driven backtest on the out-of-sample test period (2024–2026, 680 trading days) incorporating 10 bps per-leg transaction costs.
-3. **Phase 6: Performance Metrics & Sensitivity Analysis:**
+2. **Phase 6: Performance Metrics & Sensitivity Analysis:**
    - Compute Sharpe ratio, maximum drawdown, Calmar ratio, win rate, and turnover.
    - Benchmark fixed heuristic thresholds against analytical first-passage-time threshold formulations.
-4. **Phase 7: Project Report & Academic Presentation:**
+3. **Phase 7: Project Report & Academic Presentation:**
    - Produce the final 3–4 page academic project report and viva presentation slides.

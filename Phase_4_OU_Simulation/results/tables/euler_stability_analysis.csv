@@ -1,0 +1,7 @@
+Time Step,dt (yr),Theta,Theta * dt,Amplification Factor (1 - Theta*dt),Critical dt (2 / Theta),Is Stable?,Regime
+Daily,0.003968,13.52,0.0537,0.9463,0.1479,YES,Monotonically Stable
+Weekly,0.019841,13.52,0.2683,0.7317,0.1479,YES,Monotonically Stable
+Bi-Weekly,0.039683,13.52,0.5365,0.4635,0.1479,YES,Monotonically Stable
+Monthly,0.083333,13.52,1.1267,-0.1267,0.1479,YES,Oscillatory Stable (Sub-optimal)
+Quarterly,0.25,13.52,3.38,-2.38,0.1479,NO,Linearly Unstable / Explosive (|g| > 1)
+Quarterly (High Theta),0.25,25.0,6.25,-5.25,0.08,NO,Linearly Unstable / Explosive (|g| > 1)
