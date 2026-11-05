@@ -1,0 +1,4 @@
+Pair,Beta (Fixed),Total Windows,Valid Windows,Invalid Windows,% Valid Total,% Valid Train,% Valid Test,Theta Mean,Theta Median,Theta Std,Mu Mean,Mu Std,Sigma Mean,Sigma_Eq Mean,Half-Life (Days) Mean,Half-Life (Days) Median,Half-Life (Days) Min,Half-Life (Days) Max
+HDFCBANK.NS - KOTAKBANK.NS,1.0931,1796,1792,4,99.78,99.82,99.71,16.2505,13.5235,10.1086,0.1497,0.0937,0.2513,0.0503,16.64,12.92,1.8,364.12
+HDFCBANK.NS - SBIN.NS,0.3943,1796,1725,71,96.05,99.46,90.44,14.0491,12.8563,8.2159,4.1028,0.3365,0.2143,0.0491,27.3,13.59,4.11,4245.83
+KOTAKBANK.NS - SBIN.NS,0.2887,1796,1759,37,97.94,98.84,96.47,14.5613,12.2488,9.2339,4.104,0.2232,0.2411,0.0544,25.77,14.26,3.18,1112.65

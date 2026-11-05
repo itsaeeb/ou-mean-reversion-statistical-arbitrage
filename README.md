@@ -14,9 +14,10 @@ Statistical arbitrage pairs trading exploits temporary divergences in the relati
 ### Core Objectives
 1. **Mathematical Rigour:** Formulate the OU continuous-time stochastic differential equation (SDE), solve it via Itô's Lemma, and derive its theoretical expectation, variance, stationary distribution, and half-life.
 2. **Empirical Cointegration & Selection:** Formulate the spread via Ordinary Least Squares (OLS) hedge ratio estimation, evaluate stationarity using the Engle–Granger two-step test on historical training data, and filter candidate pairs by mean-reversion speed.
-3. **Parameter Estimation & Discretisation:** Contrast exact analytical AR(1) discretisation against Euler–Maruyama approximations, implementing rolling-window calibration on market data.
-4. **Algorithmic Trading & Out-of-Sample Backtesting:** Design a disciplined Z-score trading strategy with entry, exit, stop-loss thresholds, and transaction frictions (10 bps per leg) evaluated strictly out-of-sample.
-5. **Sensitivity & Performance Evaluation:** Analyze strategy risk-adjusted returns (Sharpe ratio, maximum drawdown, win rate) across variable threshold bands, window lengths, and execution frictions.
+3. **Parameter Estimation & Discretisation:** Implement exact analytical AR(1) discretisation and recover continuous OU parameters ($\theta, \mu, \sigma, \sigma_{eq}, t_{1/2}$) across rolling 120-trading-day windows with strict validity checks ($0 < b < 1$) and zero look-ahead bias.
+4. **Simulation & Numerical Validation:** Contrast exact Gaussian discretisation against Euler–Maruyama approximations, assessing estimator accuracy on synthetic paths.
+5. **Algorithmic Trading & Out-of-Sample Backtesting:** Design a disciplined Z-score trading strategy with entry, exit, stop-loss thresholds, and transaction frictions (10 bps per leg) evaluated strictly out-of-sample.
+6. **Sensitivity & Performance Evaluation:** Analyze strategy risk-adjusted returns (Sharpe ratio, maximum drawdown, win rate) across variable threshold bands, window lengths, and execution frictions.
 
 ---
 
@@ -71,8 +72,11 @@ where matching theoretical drift and conditional variance yields:
 $$b = e^{-\theta \Delta t}, \quad a = \mu (1 - b), \quad \sigma_\eta^2 = \frac{\sigma^2}{2\theta}(1 - e^{-2\theta \Delta t}) = \sigma_{eq}^2 (1 - b^2)$$
 
 Fitting the linear regression $X_t = a + b X_{t-1} + \eta_t$ via OLS allows exact recovery of the underlying continuous parameters:
-$$\widehat{\theta} = -\frac{\ln(\widehat{b})}{\Delta t}, \quad \widehat{\mu} = \frac{\widehat{a}}{1 - \widehat{b}}, \quad \widehat{\sigma}_{eq} = \frac{\widehat{\sigma}_\eta}{\sqrt{1 - \widehat{b}^2}}, \quad \widehat{\sigma} = \widehat{\sigma}_{eq} \sqrt{2\widehat{\theta}}$$
-*Numerical Constraint:* For stationary mean reversion, the discrete autoregressive coefficient must strictly satisfy $0 < b < 1$.
+$$\widehat{\theta} = -\frac{\ln(\widehat{b})}{\Delta t} = -252 \ln(\widehat{b})$$
+$$\widehat{\mu} = \frac{\widehat{a}}{1 - \widehat{b}}$$
+$$\widehat{\sigma}_{eq} = \sqrt{\frac{s^2}{1 - \widehat{b}^2}}, \quad s^2 = \frac{1}{M-2}\sum_{k=1}^M \hat{\eta}_k^2$$
+$$\widehat{\sigma} = \widehat{\sigma}_{eq} \sqrt{2\widehat{\theta}} = \sqrt{\frac{2\widehat{\theta} s^2}{1 - \widehat{b}^2}}$$
+*Numerical Constraint:* For stationary mean reversion, the discrete autoregressive coefficient must strictly satisfy $0 < b < 1$. Non-stationary estimates ($b \ge 1.0$ or $b \le 0.0$) are explicitly rejected and flagged with `NaN` parameters without silent clipping.
 
 ### 2.6 Standardised Spread (Z-Score) & Trading Strategy Logic
 Normalising the spread by its theoretical equilibrium moments produces the dimensionless Z-score:
@@ -93,7 +97,7 @@ The strategy implements a mean-reverting threshold policy:
 | :---: | :--- | :--- | :---: |
 | **Phase 1** | **Data Collection & Preprocessing** | Download 6 NSE banking stocks (2019–2026), align trading calendars, compute log prices, generate train/test splits, validate 0 missing values. | **Completed** |
 | **Phase 2** | **Pair Selection & Cointegration Analysis** | Evaluate all 15 candidate pairs on train data, OLS hedge ratios ($\beta$), Engle–Granger tests ($p < 0.05$), AR(1) OU recovery, half-life filter ($5 \le t_{1/2} \le 60$). | **Completed** |
-| **Phase 3** | **OU Parameter Estimation** | Rolling 120-day calibration of $\theta, \mu, \sigma, \sigma_{eq}$, parameter tracking, validity flags, and standardized spread $s_t$ series generation. | *Not Started* |
+| **Phase 3** | **OU Parameter Estimation** | Exact AR(1) mapping ($\Delta t = 1/252$), rolling 120-day calibration ($\theta, \mu, \sigma, \sigma_{eq}, t_{1/2}$), fixed $\beta$, validity flags ($0 < b < 1$), and Z-score spread generation. | **Completed** |
 | **Phase 4** | **OU Simulation & Estimator Validation** | Exact vs. Euler–Maruyama numerical discretization, Monte Carlo path generators, theoretical vs empirical variance, estimator bias audits. | *Not Started* |
 | **Phase 5** | **Trading Strategy & Out-of-Sample Backtesting** | Out-of-sample backtesting (2024–2026), execution logic, portfolio tracking, trade logging, 10 bps transaction costs, stop-loss mechanics. | *Not Started* |
 | **Phase 6** | **Performance Metrics & Benchmark Comparison** | Sharpe ratio, maximum drawdown, win rate, holding periods, turnover, fixed vs. analytical optimal threshold comparisons. | *Not Started* |
@@ -156,6 +160,34 @@ ou-mean-reversion-statistical-arbitrage/
 │   ├── tests/
 │   │   └── test_phase2.py                      # Unit tests for Phase 2 mathematical calculations
 │   └── run_phase2.py                           # Top-level launcher for Phase 2
+├── Phase_3_OU_Estimation/                      # Phase 3: Rolling Ornstein-Uhlenbeck parameter estimation
+│   ├── results/
+│   │   ├── figures/
+│   │   │   ├── parameter_dashboard_HDFCBANK_KOTAKBANK.png  # 6-panel comprehensive diagnostic dashboard
+│   │   │   ├── rolling_theta_HDFCBANK_KOTAKBANK.png        # Rolling theta (reversion speed) over time
+│   │   │   ├── rolling_mu_HDFCBANK_KOTAKBANK.png           # Rolling equilibrium mean mu overlaid with spread
+│   │   │   ├── rolling_sigma_HDFCBANK_KOTAKBANK.png        # Rolling diffusion volatility sigma over time
+│   │   │   ├── rolling_halflife_HDFCBANK_KOTAKBANK.png     # Rolling half-life with [5, 60] day bounds
+│   │   │   ├── rolling_sigma_eq_HDFCBANK_KOTAKBANK.png     # Rolling equilibrium standard deviation
+│   │   │   ├── standardised_spread_HDFCBANK_KOTAKBANK.png  # Z-score spread with 0, +/-2, +/-3.5 thresholds
+│   │   │   └── [equivalent 7 figures generated for HDFCBANK_SBIN and KOTAKBANK_SBIN]
+│   │   ├── tables/
+│   │   │   ├── rolling_params_HDFCBANK_KOTAKBANK.csv       # Primary pair rolling estimates (1,796 windows)
+│   │   │   ├── rolling_params_HDFCBANK_SBIN.csv            # Secondary pair rolling estimates
+│   │   │   ├── rolling_params_KOTAKBANK_SBIN.csv           # Secondary pair rolling estimates
+│   │   │   ├── combined_rolling_parameters.csv             # Consolidated parameter records across all pairs
+│   │   │   ├── standardised_spreads.csv                    # Contemporaneous & lagged Z-score series
+│   │   │   └── rolling_parameter_summary.csv               # Aggregate distribution moments & validity rates
+│   │   ├── phase_3_summary.md                  # Comprehensive empirical and theoretical methodology report
+│   │   └── phase_3_validation_report.md        # 10-point independent validation audit report (10/10 passed)
+│   ├── scripts/
+│   │   ├── __init__.py                         # Python package marker
+│   │   ├── ou_estimation.py                    # Exact AR(1) OLS, parameter recovery, rolling engine, plotting
+│   │   ├── run_phase3.py                       # Pipeline runner for Phase 3
+│   │   └── validate_phase3.py                  # Independent Phase 3 verification script
+│   ├── tests/
+│   │   └── test_phase3.py                      # Unit tests for Phase 3 mathematical calculations
+│   └── run_phase3.py                           # Top-level launcher for Phase 3
 ├── Implementation_Plan_OU_Pairs_Trading.md     # Master project blueprint and methodology plan
 ├── requirements.txt                            # Pinned Python package dependencies
 └── README.md                                   # Project documentation and current status
@@ -193,10 +225,22 @@ All $\binom{6}{2} = 15$ pairs were screened strictly on in-sample training data:
 | AXISBANK.NS | INDUSINDBK.NS | 0.6033 | 0.5985 | 2.6860 | 0.3640 | 0.7659 | 0.4919 | 1.02 | 171.6 | No | No |
 | SBIN.NS | INDUSINDBK.NS | 0.5323 | 0.5714 | 2.0152 | 0.2833 | 0.9022 | 0.6690 | 0.69 | 255.0 | No | No |
 
-### 5.3 Key Empirical Insight: Correlation $\ne$ Cointegration
-The empirical results reveal that high price correlation is insufficient for statistical arbitrage:
-- `ICICIBANK.NS - SBIN.NS` achieves the highest correlation ($r = 0.9484$) and `HDFCBANK.NS - ICICIBANK.NS` achieves $r = 0.9293$, yet both fail cointegration testing ($p \approx 0.202$). Their price paths share general sector trends but diverge with non-stationary drift.
-- **`HDFCBANK.NS - KOTAKBANK.NS`** exhibits both high correlation ($r = 0.9076$) and statistically significant cointegration ($p = 0.0481 < 0.05$; residual ADF $p = 0.0128$). With $\beta = 1.0931$ and an estimated half-life of **31.0 trading days** (within the eligible $5 \le t_{1/2} \le 60$ day window), it serves as the primary asset pair for OU modelling.
+**Key Finding:** Correlation $\ne$ Cointegration. While `ICICIBANK.NS - SBIN.NS` achieves the highest correlation ($r = 0.9484$), it completely fails cointegration testing ($p = 0.2024$). `HDFCBANK.NS - KOTAKBANK.NS` displays genuine cointegration ($p = 0.0481 < 0.05$; residual ADF $p = 0.0128$), an estimated hedge ratio $\beta = 1.0931$, and an in-sample half-life of $31.0$ trading days.
+
+### 5.3 Phase 3: Rolling Ornstein–Uhlenbeck Parameter Estimation
+Using a fixed hedge ratio $\beta$ and rolling windows of exactly 120 trading days ($\Delta t = 1/252$ yr) across all $1,796$ windows (1,116 train, 680 test):
+
+| Pair | Fixed $\beta$ | Total Windows | Valid Windows | Invalid Windows | % Valid Total | % Valid Train | % Valid Test | Mean $\theta$ (yr⁻¹) | Median $\theta$ (yr⁻¹) | Mean $\mu$ | Mean $\sigma$ | Mean $\sigma_{eq}$ | Mean Half-Life (days) | Median Half-Life (days) |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **HDFCBANK.NS - KOTAKBANK.NS** | **1.0931** | **1,796** | **1,792** | **4** | **99.78%** | **99.82%** | **99.71%** | **16.25** | **13.52** | **0.1497** | **0.2513** | **0.0503** | **16.6** | **12.9** |
+| HDFCBANK.NS - SBIN.NS | 0.3943 | 1,796 | 1,725 | 71 | 96.05% | 99.46% | 90.44% | 14.05 | 12.86 | 4.1028 | 0.2143 | 0.0491 | 27.3 | 13.6 |
+| KOTAKBANK.NS - SBIN.NS | 0.2887 | 1,796 | 1,759 | 37 | 97.94% | 98.84% | 96.47% | 14.56 | 12.25 | 4.1040 | 0.2411 | 0.0544 | 25.8 | 14.3 |
+
+**Key Insights for Primary Pair (`HDFCBANK.NS - KOTAKBANK.NS`):**
+- **Validity Rate:** **99.78% of windows** satisfy the mean-reversion criterion $0 < b < 1$. Only 4 windows (0.22%) displayed local trending pauses ($b \ge 1.0$), which were explicitly flagged as invalid with `NaN` parameters (zero silent clipping).
+- **Mean-Reversion Speed ($\theta$):** Averages $16.25 \text{ yr}^{-1}$ (median $13.52 \text{ yr}^{-1}$), confirming active mean-reverting drift.
+- **Half-Life Distribution ($t_{1/2}$):** Median half-life of **$12.9 \text{ trading days}$** (mean $16.6$ days, IQR $[9.3, 19.8]$ days), confirming an optimal holding horizon for statistical arbitrage.
+- **Signal Frequency:** On the standardized spread $s_t$, **38 trading days** triggered long entries ($s_t < -2.0$), **44 trading days** triggered short entries ($s_t > +2.0$), and only **5 trading days** breached the structural stop-loss boundary ($|s_t| \ge 3.5$).
 
 ---
 
@@ -263,6 +307,18 @@ python Phase_2_Pair_Selection/scripts/validate_phase2.py
 python -m unittest Phase_2_Pair_Selection/tests/test_phase2.py
 ```
 
+### 7.4 Running Phase 3 (OU Parameter Estimation)
+```bash
+# Execute Phase 3 rolling estimation pipeline:
+python Phase_3_OU_Estimation/run_phase3.py
+
+# Run Phase 3 independent validation audit:
+python Phase_3_OU_Estimation/scripts/validate_phase3.py
+
+# Run Phase 3 automated unit tests:
+python -m unittest Phase_3_OU_Estimation/tests/test_phase3.py
+```
+
 ---
 
 ## 8. Verified Output Artifacts & Locations
@@ -285,6 +341,15 @@ python -m unittest Phase_2_Pair_Selection/tests/test_phase2.py
 | **Phase 2** | Figure | `Phase_2_Pair_Selection/results/figures/selected_pair_spreads.png` | In-sample synthetic spread trajectory for selected pair |
 | **Phase 2** | Report | `Phase_2_Pair_Selection/results/phase_2_summary.md` | Theoretical and empirical methodology summary |
 | **Phase 2** | Report | `Phase_2_Pair_Selection/results/phase_2_validation_report.md` | 7-point independent validation audit (0 discrepancies) |
+| **Phase 3** | Table | `Phase_3_OU_Estimation/results/tables/rolling_params_HDFCBANK_KOTAKBANK.csv` | Primary pair rolling parameter estimates across all 1,796 windows |
+| **Phase 3** | Table | `Phase_3_OU_Estimation/results/tables/combined_rolling_parameters.csv` | Combined rolling parameter estimates for all selected pairs |
+| **Phase 3** | Table | `Phase_3_OU_Estimation/results/tables/standardised_spreads.csv` | Contemporaneous ($s_t$) and lagged ($s_t^{\text{lagged}}$) Z-scores |
+| **Phase 3** | Table | `Phase_3_OU_Estimation/results/tables/rolling_parameter_summary.csv` | Statistical summary, distribution moments & validity percentages |
+| **Phase 3** | Figure | `Phase_3_OU_Estimation/results/figures/parameter_dashboard_HDFCBANK_KOTAKBANK.png` | 6-panel comprehensive diagnostic dashboard for primary pair |
+| **Phase 3** | Figure | `Phase_3_OU_Estimation/results/figures/standardised_spread_HDFCBANK_KOTAKBANK.png` | Standardized spread with $0, \pm 2, \pm 3.5$ trading trigger lines |
+| **Phase 3** | Figure | `Phase_3_OU_Estimation/results/figures/rolling_halflife_HDFCBANK_KOTAKBANK.png` | Rolling half-life with $[5, 60]$ trading day acceptance boundaries |
+| **Phase 3** | Report | `Phase_3_OU_Estimation/results/phase_3_summary.md` | Theoretical formulation, exact discretisation, and findings report |
+| **Phase 3** | Report | `Phase_3_OU_Estimation/results/phase_3_validation_report.md` | 10-point independent validation audit report (10/10 passed) |
 
 ---
 
@@ -292,18 +357,14 @@ python -m unittest Phase_2_Pair_Selection/tests/test_phase2.py
 
 The remaining research phases outlined in `Implementation_Plan_OU_Pairs_Trading.md` will be sequentially developed:
 
-1. **Phase 3: OU Parameter Estimation (Upcoming):**
-   - Implement rolling-window estimation ($W = 120$ trading days) for the selected `HDFCBANK.NS - KOTAKBANK.NS` spread ($X_t = \ln P_{\text{HDFC}} - 1.0931 \ln P_{\text{KOTAK}}$).
-   - Track time-varying parameters: $\theta_t, \mu_t, \sigma_t, \sigma_{eq,t}$, and calculate the rolling standardized spread $s_t$.
-   - Implement parameter stability checks and validity flags ($0 < b < 1$).
-2. **Phase 4: OU Simulation & Estimator Validation:**
+1. **Phase 4: OU Simulation & Estimator Validation (Upcoming):**
    - Numerical comparison of exact Gaussian discretization vs. Euler–Maruyama simulation over varying time steps $\Delta t$.
-   - Synthetic Monte Carlo experiments to evaluate parameter recovery bias and standard errors.
-3. **Phase 5: Trading Strategy & Out-of-Sample Backtesting:**
+   - Synthetic Monte Carlo experiments to evaluate parameter recovery bias and standard errors on known parameter sets.
+2. **Phase 5: Trading Strategy & Out-of-Sample Backtesting:**
    - Implement Z-score state machine (Long entry at $s_t < -2$, Short entry at $s_t > +2$, Exit at $|s_t| \le 0.5$, Stop-loss at $|s_t| \ge 3.5$).
    - Run event-driven backtest on the out-of-sample test period (2024–2026, 680 trading days) incorporating 10 bps per-leg transaction costs.
-4. **Phase 6: Performance Metrics & Sensitivity Analysis:**
+3. **Phase 6: Performance Metrics & Sensitivity Analysis:**
    - Compute Sharpe ratio, maximum drawdown, Calmar ratio, win rate, and turnover.
    - Benchmark fixed heuristic thresholds against analytical first-passage-time threshold formulations.
-5. **Phase 7: Project Report & Academic Presentation:**
+4. **Phase 7: Project Report & Academic Presentation:**
    - Produce the final 3–4 page academic project report and viva presentation slides.
