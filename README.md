@@ -86,15 +86,24 @@ $$X_{t+\Delta t}^{EM} = X_t^{EM} + \theta(\mu - X_t^{EM})\Delta t + \sigma \sqrt
 - If $\Delta t \ge \frac{2}{\theta}$, Euler–Maruyama becomes **explosively unstable**, whereas exact discretisation remains unconditionally stable (A-stable) for all $\Delta t > 0$.
 
 ### 2.7 Standardised Spread (Z-Score) & Trading Strategy Logic
-Normalising the spread by its theoretical equilibrium moments produces the dimensionless Z-score:
-$$s_t = \frac{X_t - \mu}{\sigma_{eq}}$$
+Normalising the continuous-time spread by its rolling equilibrium moments produces the dimensionless Z-score:
+$$s_t = \frac{X_t - \hat{\mu}_t}{\hat{\sigma}_{eq, t}}, \quad \hat{\sigma}_{eq, t} = \frac{\hat{\sigma}_t}{\sqrt{2\hat{\theta}_t}}$$
 
-The strategy implements a mean-reverting threshold policy:
-- **Long Spread Entry ($s_t < -2.0$):** Spread is abnormally depressed. Buy Stock A (long weight $+1$), short Stock B (short weight $-\beta$).
-- **Short Spread Entry ($s_t > +2.0$):** Spread is abnormally elevated. Short Stock A (short weight $-1$), buy Stock B (long weight $+\beta$).
-- **Mean-Reversion Exit ($|s_t| \le 0.5$):** Spread has reverted into the equilibrium band. Liquidate both legs.
-- **Stop-Loss Exit ($|s_t| \ge 3.5$):** Spread divergence exceeds structural boundaries (potential cointegration breakdown). Liquidate position immediately.
-- **Transaction Costs:** Realistic trading friction of $10\text{ bps}$ ($0.10\%$) applied to each traded leg on both open and close.
+#### Position Sizing & Capital Normalization
+To ensure total gross invested capital equals $1.0$ ($|w_A| + |w_B| = 1.0$), portfolio weights are normalized by $(1 + |\beta|)$:
+$$w_A = \frac{1}{1 + |\beta|}, \quad w_B = -\frac{\beta}{1 + |\beta|}$$
+The normalized gross return of the long spread position is:
+$$r_{\text{spread}, t} = \frac{r_{A, t} - \beta r_{B, t}}{1 + |\beta|}$$
+*(The short spread position earns $-r_{\text{spread}, t}$. Negative or invalid $\beta$ values are handled explicitly).*
+
+#### State Machine Trading Rules
+The strategy implements a disciplined mean-reverting threshold policy:
+- **Long Spread Entry ($-3.5 < s_t \le -2.0$):** Spread is abnormally depressed. Enter Long Spread ($w_A$ of Stock A, $w_B$ of Stock B).
+- **Short Spread Entry ($+2.0 \le s_t < +3.5$):** Spread is abnormally elevated. Enter Short Spread ($-w_A$ of Stock A, $-w_B$ of Stock B).
+- **Mean-Reversion Take-Profit Exit ($|s_t| \le 0.5$):** Spread has reverted into the equilibrium band. Liquidate both legs to cash.
+- **Stop-Loss Risk Exit ($|s_t| \ge 3.5$):** Spread divergence exceeds structural boundaries. Liquidate position immediately to prevent catastrophic loss.
+- **Strict Zero Look-Ahead Execution:** Signals generated at the market close of day $t$ execute for the next trading session $t+1$. Daily returns are earned during session $t+1$ based on price change from close $t$ to close $t+1$.
+- **Transaction Costs:** Realistic friction of $10\text{ bps}$ ($0.10\%$) applied to each traded leg on both entry and exit ($20\text{ bps}$ on entry, $20\text{ bps}$ on exit = $40\text{ bps}$ round-trip).
 
 ---
 
@@ -106,7 +115,7 @@ The strategy implements a mean-reverting threshold policy:
 | **Phase 2** | **Pair Selection & Cointegration Analysis** | Evaluate all 15 candidate pairs on train data, OLS hedge ratios ($\beta$), Engle–Granger tests ($p < 0.05$), AR(1) OU recovery, half-life filter ($5 \le t_{1/2} \le 60$). | **Completed** |
 | **Phase 3** | **OU Parameter Estimation** | Exact AR(1) mapping ($\Delta t = 1/252$), rolling 120-day calibration ($\theta, \mu, \sigma, \sigma_{eq}, t_{1/2}$), fixed $\beta$, validity flags ($0 < b < 1$), and Z-score spread generation. | **Completed** |
 | **Phase 4** | **OU Simulation & Numerical Validation** | Exact vs. Euler–Maruyama discretisation, coupled Brownian paths, stability boundaries ($\Delta t < 2/\theta$), 10,000-path Monte Carlo moment checks, and Hurwicz bias analysis. | **Completed** |
-| **Phase 5** | **Trading Strategy & Out-of-Sample Backtesting** | Out-of-sample backtesting (2024–2026), execution logic, portfolio tracking, trade logging, 10 bps transaction costs, stop-loss mechanics. | *Not Started* |
+| **Phase 5** | **Trading Strategy & Out-of-Sample Backtesting** | Out-of-sample backtesting (2024–2026, 680 days), zero look-ahead bias, 10 bps per-leg transaction costs, stop-loss protection, single-pair & equal-weighted multi-pair portfolio. | **Completed** |
 | **Phase 6** | **Performance Metrics & Benchmark Comparison** | Sharpe ratio, maximum drawdown, win rate, holding periods, turnover, fixed vs. analytical optimal threshold comparisons. | *Not Started* |
 | **Phase 7** | **Report, Presentation & Documentation** | Comprehensive academic project report (3–4 pages), slide deck for viva defense, documentation consolidation. | *Not Started* |
 
@@ -227,6 +236,29 @@ ou-mean-reversion-statistical-arbitrage/
 │   ├── tests/
 │   │   └── test_phase4.py                      # Unit tests for Phase 4 simulation engine
 │   └── run_phase4.py                           # Top-level launcher for Phase 4
+├── Phase_5_Trading_Strategy/                   # Phase 5: Trading strategy and out-of-sample backtesting
+│   ├── results/
+│   │   ├── figures/
+│   │   │   ├── equity_curves.png               # Cumulative net equity curves vs. initial capital
+│   │   │   ├── drawdown_curves.png             # Portfolio underwater drawdown profiles (%)
+│   │   │   ├── spread_signals_HDFCBANK_KOTAKBANK.png # Primary pair spread, thresholds, and trade markers
+│   │   │   ├── spread_signals_all_pairs.png    # 3-panel spread and trade visualization
+│   │   │   └── performance_comparison.png      # Bar chart comparing Net Return, Sharpe, Drawdown, Win Rate
+│   │   ├── tables/
+│   │   │   ├── trade_log.csv                   # Ledger of all 18 executed trades (prices, Z-scores, PnL, fees)
+│   │   │   ├── daily_portfolio_returns.csv     # Daily portfolio equity, returns, and costs (680 days)
+│   │   │   ├── performance_metrics.csv         # Standardized risk-adjusted performance table
+│   │   │   └── pair_equity_curves.csv          # Daily equity and drawdown series for each pair
+│   │   ├── phase_5_summary.md                  # Comprehensive strategy summary and empirical analysis
+│   │   └── phase_5_validation_report.md        # 10-point independent validation audit report (10/10 passed)
+│   ├── scripts/
+│   │   ├── __init__.py                         # Python package marker
+│   │   ├── backtest_engine.py                  # Strategy state machine, spread return normalization, cost accounting
+│   │   ├── plot_results.py                     # High-resolution publication-quality plotting utilities
+│   │   ├── run_phase5.py                       # Pipeline runner for Phase 5
+│   │   └── validate_phase5.py                  # Independent Phase 5 verification script
+│   └── tests/
+│       └── test_phase5.py                      # Unit tests for Phase 5 backtesting engine
 ├── Implementation_Plan_OU_Pairs_Trading.md     # Master project blueprint and methodology plan
 ├── requirements.txt                            # Pinned Python package dependencies
 └── README.md                                   # Project documentation and current status
@@ -295,6 +327,23 @@ Using a fixed hedge ratio $\beta$ and rolling windows of exactly 120 trading day
    - In short windows ($N = 120$), OLS AR(1) estimation exhibits positive Hurwicz bias in $\widehat{\theta}$ ($\mathbb{E}[\widehat{\theta}] = 20.07$ vs. true $10.0$).
    - As sample size increases ($N = 252 \to 500 \to 1235$), the bias decays smoothly to $+0.70$ ($+7\%$).
    - Volatility $\sigma$ is estimated with near-zero bias across all sample sizes ($\widehat{\sigma} = 0.251$ vs. $0.250$).
+
+### 5.5 Phase 5: Trading Strategy and Out-of-Sample Backtesting
+The mean-reversion trading strategy was executed on the out-of-sample period (1 January 2024 to 30 September 2026, 680 trading days) under strict zero look-ahead bias, fixed training hedge ratios $\beta$, and 10 bps per-leg transaction costs (20 bps entry, 20 bps exit = 40 bps round-trip):
+
+| Pair / Portfolio | Total Trades | Win Rate | Avg Hold (Days) | Cum. Gross Return | Cum. Net Return | Ann. Net Return | Ann. Volatility | Sharpe ($r_f=0$) | Sharpe ($r_f=6.5\%$) | Max Drawdown (Net) | Total Costs | Ann. Turnover |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **`HDFCBANK.NS - KOTAKBANK.NS`** | 3 | 0.0% | 25.7 | -2.83% | **-3.99%** | -1.50% | 2.77% | -0.54 | -2.88 | **4.76%** | 1.20% | 2.22x |
+| **`HDFCBANK.NS - SBIN.NS`** | 9 | **88.9%** | 8.8 | +17.15% | **+13.02%** | +4.64% | 5.05% | **+0.92** | -0.37 | 7.03% | 3.60% | 6.67x |
+| **`KOTAKBANK.NS - SBIN.NS`** | 6 | 33.3% | 13.5 | -7.73% | **-9.94%** | -3.81% | 5.20% | -0.73 | -1.98 | 10.03% | 2.40% | 4.45x |
+| **`COMBINED PORTFOLIO`** (Equal Weight 1/3) | **18** | **55.6%** | **13.2** | **+1.84%** | **-0.58%** | **-0.21%** | **2.45%** | **-0.09** | **-2.74** | **3.58%** | **7.20%** | **13.34x** |
+
+**Key Empirical Findings & Financial Takeaways:**
+1. **Transaction Cost Drag:** Round-trip transaction friction of 40 bps ($0.40\%$) per trade consumed **7.20%** of gross portfolio capital across 18 trades. In Trade 1 of the primary pair, a gross gain of +0.22% resulted in a -0.18% net loss, proving that statistical arbitrage alpha is highly sensitive to broker commissions.
+2. **Rolling Parameter Adaptation vs. Physical Reversion:** In extended trades (e.g. Trade 2 held 46 days), the rolling 120-day mean $\hat{\mu}_t$ adapted upward toward the drifting spread $X_t$, triggering a take-profit exit ($|s_t| \le 0.5$) due to parameter movement rather than physical spread convergence.
+3. **Stop-Loss Protection in Structural Divergence:** The stop-loss rule ($|s_t| \ge 3.5$) successfully protected capital when PSU banking momentum caused SBI to surge in early 2026. This preserved capital for subsequent mean-reverting swings on `HDFCBANK - SBIN` (+13.02% net return, 88.9% win rate).
+4. **Portfolio Diversification Compresses Downside Risk:** Combining pairs in an equal-weighted portfolio compressed maximum net drawdown to just **3.58%** (compared to 7.03% for HDFC-SBI and 10.03% for Kotak-SBI) and reduced annualized volatility to **2.45%**.
+5. **Audited Integrity:** 100% of trades satisfied $\text{Entry\_Date} > \text{Signal\_Date}$, with zero look-ahead bias and exact balance-sheet compounding verified in `validate_phase5.py`.
 
 ---
 
@@ -385,6 +434,18 @@ python Phase_4_OU_Simulation/scripts/validate_phase4.py
 python -m unittest Phase_4_OU_Simulation/tests/test_phase4.py
 ```
 
+### 7.6 Running Phase 5 (Trading Strategy & Out-of-Sample Backtesting)
+```bash
+# Execute Phase 5 backtesting pipeline across all pairs and combined portfolio:
+python Phase_5_Trading_Strategy/scripts/run_phase5.py
+
+# Run Phase 5 independent validation audit (10/10 checks):
+python Phase_5_Trading_Strategy/scripts/validate_phase5.py
+
+# Run Phase 5 automated unit tests:
+python -m unittest Phase_5_Trading_Strategy/tests/test_phase5.py
+```
+
 ---
 
 ## 8. Verified Output Artifacts & Locations
@@ -428,6 +489,17 @@ python -m unittest Phase_4_OU_Simulation/tests/test_phase4.py
 | **Phase 4** | Figure | `Phase_4_OU_Simulation/results/figures/parameter_recovery_comparison.png` | Parity boxplots and Hurwicz bias decay across sample sizes |
 | **Phase 4** | Report | `Phase_4_OU_Simulation/results/phase_4_summary.md` | Comprehensive simulation and numerical validation report |
 | **Phase 4** | Report | `Phase_4_OU_Simulation/results/phase_4_validation_report.md` | 10-point independent validation audit report (10/10 passed) |
+| **Phase 5** | Table | `Phase_5_Trading_Strategy/results/tables/trade_log.csv` | Full transaction ledger for all 18 executed trades |
+| **Phase 5** | Table | `Phase_5_Trading_Strategy/results/tables/daily_portfolio_returns.csv` | 680-day daily portfolio net/gross returns, costs, and equity |
+| **Phase 5** | Table | `Phase_5_Trading_Strategy/results/tables/performance_metrics.csv` | Sharpe, MaxDD, Win Rate, Turnover metrics across pairs |
+| **Phase 5** | Table | `Phase_5_Trading_Strategy/results/tables/pair_equity_curves.csv` | Daily net/gross equity and drawdown series per pair |
+| **Phase 5** | Figure | `Phase_5_Trading_Strategy/results/figures/equity_curves.png` | Net cumulative equity curves vs. initial capital |
+| **Phase 5** | Figure | `Phase_5_Trading_Strategy/results/figures/drawdown_curves.png` | Underwater drawdown profiles across pairs and portfolio |
+| **Phase 5** | Figure | `Phase_5_Trading_Strategy/results/figures/spread_signals_HDFCBANK_KOTAKBANK.png` | Primary pair spread with threshold bands and trade markers |
+| **Phase 5** | Figure | `Phase_5_Trading_Strategy/results/figures/spread_signals_all_pairs.png` | 3-panel spread and trade visualization across all pairs |
+| **Phase 5** | Figure | `Phase_5_Trading_Strategy/results/figures/performance_comparison.png` | Bar chart comparing Return, Sharpe, Drawdown, Win Rate |
+| **Phase 5** | Report | `Phase_5_Trading_Strategy/results/phase_5_summary.md` | Strategy methodology and out-of-sample empirical analysis |
+| **Phase 5** | Report | `Phase_5_Trading_Strategy/results/phase_5_validation_report.md` | 10-point independent validation audit report (10/10 passed) |
 
 ---
 
@@ -435,11 +507,9 @@ python -m unittest Phase_4_OU_Simulation/tests/test_phase4.py
 
 The remaining research phases outlined in `Implementation_Plan_OU_Pairs_Trading.md` will be sequentially developed:
 
-1. **Phase 5: Trading Strategy & Out-of-Sample Backtesting (Upcoming):**
-   - Implement Z-score state machine (Long entry at $s_t < -2$, Short entry at $s_t > +2$, Exit at $|s_t| \le 0.5$, Stop-loss at $|s_t| \ge 3.5$).
-   - Run event-driven backtest on the out-of-sample test period (2024–2026, 680 trading days) incorporating 10 bps per-leg transaction costs.
-2. **Phase 6: Performance Metrics & Sensitivity Analysis:**
-   - Compute Sharpe ratio, maximum drawdown, Calmar ratio, win rate, and turnover.
-   - Benchmark fixed heuristic thresholds against analytical first-passage-time threshold formulations.
-3. **Phase 7: Project Report & Academic Presentation:**
-   - Produce the final 3–4 page academic project report and viva presentation slides.
+1. **Phase 6: Performance Metrics & Benchmark Comparison (Upcoming):**
+   - Benchmark heuristic thresholds (entry 2.0, exit 0.5) against analytical optimal threshold formulations derived from the OU first-passage-time problem.
+   - Comprehensive sensitivity experiments across mean-reversion speeds, volatility levels, window lengths (60, 120, 250 days), and transaction costs (0 to 30 bps).
+2. **Phase 7: Project Report & Academic Presentation:**
+   - Produce the final 3–4 page academic project report and viva presentation slides for MAC F244 defense.
+

@@ -1,0 +1,5 @@
+Total_Days,Years,Total_Trades,Winning_Trades,Losing_Trades,Win_Rate,Avg_Holding_Days,Cumulative_Gross_Return,Cumulative_Net_Return,Annualised_Gross_Return,Annualised_Net_Return,Annualised_Volatility,Sharpe_Ratio_rf_zero,Sharpe_Ratio_rf_6_5pct,Max_Drawdown_Gross,Max_Drawdown_Net,Total_Transaction_Costs,Annualised_Turnover,Pair
+680,2.698,3,0,3,0.0,25.7,-0.0283,-0.0399,-0.0106,-0.015,0.0277,-0.5402,-2.8836,0.044,0.0476,0.012,2.22,HDFCBANK.NS - KOTAKBANK.NS
+680,2.698,9,8,1,0.8889,8.8,0.1715,0.1302,0.0604,0.0464,0.0505,0.918,-0.3682,0.0628,0.0703,0.036,6.67,HDFCBANK.NS - SBIN.NS
+680,2.698,6,2,4,0.3333,13.5,-0.0773,-0.0994,-0.0294,-0.0381,0.052,-0.7324,-1.9829,0.0838,0.1003,0.024,4.45,KOTAKBANK.NS - SBIN.NS
+680,2.698,18,10,8,0.5556,13.2,0.0184,-0.0058,0.0068,-0.0021,0.0245,-0.0875,-2.7399,0.03,0.0358,0.072,13.34,COMBINED_PORTFOLIO (Equal Weight)
