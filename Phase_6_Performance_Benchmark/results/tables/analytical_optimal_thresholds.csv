@@ -1,0 +1,4 @@
+Pair,Theta,Sigma_eq,Beta,Cost_Roundtrip_Bps,Optimal_Entry_Z,Optimal_Exit_Z,Expected_Trade_Days,Expected_Wait_Days,Expected_Cycle_Days,Expected_Net_Profit_Per_Cycle,Theoretical_Annual_Return,Theoretical_Annual_Volatility,Theoretical_Sharpe,Heuristic_Entry_Z,Heuristic_Exit_Z
+HDFCBANK.NS - KOTAKBANK.NS,5.64,0.0503,1.0931,40.0,1.25,0.0,47.18,46.26,93.43,0.02604,0.0702,0.2711,0.0193,2.0,0.5
+HDFCBANK.NS - SBIN.NS,4.01,0.0491,0.3943,40.0,1.25,0.0,66.35,65.06,131.41,0.04002,0.0767,0.3972,0.0296,2.0,0.5
+KOTAKBANK.NS - SBIN.NS,4.57,0.0544,0.2887,40.0,1.25,0.0,58.22,57.09,115.31,0.04877,0.1066,0.4762,0.0873,2.0,0.5
