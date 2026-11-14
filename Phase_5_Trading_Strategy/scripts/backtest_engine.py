@@ -204,7 +204,7 @@ def simulate_pair_strategy(
             if is_valid_t and not np.isnan(z_t):
                 if abs(z_t) >= config.stop_loss_threshold:
                     exit_reason = "STOP_LOSS"
-                elif abs(z_t) <= config.exit_threshold:
+                elif (current_pos == -1 and z_t <= config.exit_threshold) or (current_pos == 1 and z_t >= -config.exit_threshold):
                     exit_reason = "TAKE_PROFIT"
 
             # Mandatory closure on last day of test period

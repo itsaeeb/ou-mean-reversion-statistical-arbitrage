@@ -65,11 +65,11 @@ For the primary cointegrated pair (`HDFCBANK.NS - KOTAKBANK.NS`), the theoretica
 
 Evaluating the multi-pair equal-weighted portfolios across the 680-day out-of-sample test period:
 
-| Strategy | Total Trades | Win Rate | Avg Hold (Days) | Cum. Net Return | Ann. Net Return | Ann. Volatility | Sharpe ($r_f=0$) | Sharpe ($r_f=6.5\%$) | Max Drawdown | Turnover |
+| Strategy | Total Trades | Win Rate | Avg Hold (Days) | Cum. Net Return | Ann. Net Return | Ann. Volatility | Sharpe ($r_f=0$) | Sharpe ($r_f=6.5%$) | Max Drawdown | Turnover |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | **Fixed Benchmark (2.0 / 0.5)** | 18 | 55.6% | 13.2 | -0.58% | -0.21% | 2.45% | -0.09 | -2.74 | 3.58% | 13.34x |
-| **Analytical Optimal (FPT)** | 12 | 58.3% | 157.1 | -7.52% | -2.85% | 8.00% | -0.36 | -1.17 | 19.47% | 8.89x |
-| **In-Sample Calibrated (1.75 / 0.25)** | 24 | 41.7% | 26.6 | -8.02% | -3.05% | 4.43% | -0.69 | -2.16 | 9.51% | 17.79x |
+| **Analytical Optimal (FPT)** | 38 | 55.3% | 33.8 | -7.63% | -2.90% | 6.27% | -0.46 | -1.50 | 10.75% | 28.16x |
+| **In-Sample Calibrated (1.75 / 0.25)** | 25 | 44.0% | 25.3 | -7.70% | -2.92% | 4.40% | -0.66 | -2.14 | 8.85% | 18.53x |
 
 ### Primary Pair Empirical Highlights (`HDFCBANK.NS - KOTAKBANK.NS`):
 - **Analytical Optimal (FPT) Strategy:** Delivered **+11.87% Cumulative Net Return** (Annualized Net Return +4.24%, Sharpe Ratio +0.36) with only 1 extended cycle held through optimal mean reversion.
