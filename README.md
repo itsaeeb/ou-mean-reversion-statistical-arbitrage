@@ -623,3 +623,18 @@ python -m unittest Phase_6_Performance_Benchmark/tests/test_phase6.py
 - **Corrected README claims:** pair-selection status of the borderline pairs; portfolio transaction costs (2.40%, not 7.20%); the stop-loss interpretation; the transaction-cost break-even (≈7.5 bps per leg, not 12.5); the FPT holding-time comparison; the Monte Carlo error bound (< 0.7%, not < 0.15%). Also added the losing FPT and 1.75 / 0.25 results for all pairs, and Buy & Hold SBI, to the Phase 6 table, and regenerated the Phase 2 table from the CSV (the earlier table had stale values for most pairs).
 
 ---
+
+## 11. References and Acknowledgement of AI Tools
+
+[1] G. E. Uhlenbeck and L. S. Ornstein, On the theory of the Brownian motion, Phys. Rev. 36 (1930) 823–841.
+[2] R. F. Engle and C.W. J. Granger, Co-integration and error correction: representation, estimation, and testing,
+Econometrica 55 (1987) 251–276.
+[3] W. K. Bertram, Analytic solutions for optimal statistical arbitrage trading, Physica A 389 (2010) 2234–2243.
+[4] E. Gatev, W. N. Goetzmann and K. G. Rouwenhorst, Pairs trading: performance of a relative-value arbitrage
+rule, Rev. Financ. Stud. 19 (2006) 797–827.
+[5] F. H. C. Marriott and J. A. Pope, Bias in the estimation of autocorrelations, Biometrika 41 (1954) 390–402.
+[6] S. E. Shreve, Stochastic Calculus for Finance II: Continuous-Time Models, Springer, 2004.
+
+Claude (Anthropic, accessed through claude.ai) was used for analysis and validation design, write and debug Python code for the notebook. All equations, code and results were checked, run and edited by the group.
+
+---
