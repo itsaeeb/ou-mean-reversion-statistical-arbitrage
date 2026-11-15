@@ -1,29 +1,28 @@
-# Stochastic Modelling of Statistical Arbitrage Using Ornstein–Uhlenbeck Processes: A Mean-Reversion Based Pairs Trading Strategy
+# Stochastic Modelling of Statistical Arbitrage Using Ornstein-Uhlenbeck Processes: A Mean-Reversion Based Pairs Trading Strategy
 
-**Course:** MAC F244 — Stochastic Calculus and Applications to Finance  
-**Institution:** Birla Institute of Technology and Science (BITS), Pilani  
+**Course:** MAC F244 - Stochastic Calculus and Applications to Finance  
 **Implementation Language:** Python 3.10+  
-**Target Market:** National Stock Exchange of India (NSE) — Nifty Bank Constituents  
+**Target Market:** National Stock Exchange of India (NSE) - Nifty Bank Constituents  
 
 ---
 
-## 1. Project Overview & Objectives
+## 1. Project Overview and Objectives
 
-Statistical arbitrage pairs trading exploits temporary divergences in the relative pricing of two economically linked assets. While classical pairs trading often relies on heuristics, this project grounds the strategy in **stochastic calculus** by modelling the continuous-time dynamics of the synthetic log-price spread using an **Ornstein–Uhlenbeck (OU) mean-reverting process**.
+Statistical arbitrage pairs trading exploits temporary divergences in the relative pricing of two economically linked assets. While classical pairs trading often relies on heuristics, this project grounds the strategy in stochastic calculus by modelling the continuous-time dynamics of the synthetic log-price spread using an **Ornstein–Uhlenbeck (OU) mean-reverting process**.
 
-### Core Objectives
+### Objectives
 1. **Mathematical Rigour:** Formulate the OU continuous-time stochastic differential equation (SDE), solve it via Itô's Lemma, and derive its theoretical expectation, variance, stationary distribution, and half-life.
-2. **Empirical Cointegration & Selection:** Formulate the spread via Ordinary Least Squares (OLS) hedge ratio estimation, evaluate stationarity using the Engle–Granger two-step test on historical training data, and filter candidate pairs by mean-reversion speed.
-3. **Parameter Estimation & Discretisation:** Implement exact analytical AR(1) discretisation and recover continuous OU parameters ($\theta, \mu, \sigma, \sigma_{eq}, t_{1/2}$) across rolling 120-trading-day windows with strict validity checks ($0 < b < 1$) and zero look-ahead bias.
-4. **Simulation & Numerical Validation:** Contrast exact Gaussian discretisation against Euler–Maruyama approximations, verify theoretical moment dynamics via large-scale Monte Carlo, and assess estimator bias on synthetic paths.
-5. **Algorithmic Trading & Out-of-Sample Backtesting:** Design a disciplined Z-score trading strategy with entry, exit, stop-loss thresholds, and transaction frictions (10 bps per leg) evaluated strictly out-of-sample.
-6. **Sensitivity & Performance Evaluation:** Analyze strategy risk-adjusted returns (Sharpe ratio, maximum drawdown, win rate) across variable threshold bands, window lengths, and execution frictions.
+2. **Empirical Cointegration and Selection:** Formulate the spread via Ordinary Least Squares (OLS) hedge ratio estimation, evaluate stationarity using the Engle–Granger two-step test on historical training data, and filter candidate pairs by mean-reversion speed.
+3. **Parameter Estimation and Discretisation:** Implement exact analytical AR(1) discretisation and recover continuous OU parameters ($\theta, \mu, \sigma, \sigma_{eq}, t_{1/2}$) across rolling 120-trading-day windows with strict validity checks ($0 < b < 1$) and zero look-ahead bias.
+4. **Simulation and Numerical Validation:** Contrast exact Gaussian discretisation against Euler–Maruyama approximations, verify theoretical moment dynamics via large-scale Monte Carlo, and assess estimator bias on synthetic paths.
+5. **Algorithmic Trading and Out-of-Sample Backtesting:** Design a disciplined Z-score trading strategy with entry, exit, stop-loss thresholds, and transaction frictions (10 bps per leg) evaluated strictly out-of-sample.
+6. **Sensitivity and Performance Evaluation:** Analyze strategy risk-adjusted returns (Sharpe ratio, maximum drawdown, win rate) across variable threshold bands, window lengths, and execution frictions.
 
 ---
 
 ## 2. Mathematical Methodology
 
-### 2.1 Asset Universe & Log-Price Spread
+### 2.1 Asset Universe and Log-Price Spread
 Given two non-stationary price series $P_t^A$ and $P_t^B$, we consider their natural logarithms:
 $$y_t = \ln(P_t^A), \quad x_t = \ln(P_t^B)$$
 
@@ -78,18 +77,18 @@ $$\widehat{\sigma}_{eq} = \sqrt{\frac{s^2}{1 - \widehat{b}^2}}, \quad s^2 = \fra
 $$\widehat{\sigma} = \widehat{\sigma}_{eq} \sqrt{2\widehat{\theta}} = \sqrt{\frac{2\widehat{\theta} s^2}{1 - \widehat{b}^2}}$$
 *Numerical Constraint:* For stationary mean reversion, the discrete autoregressive coefficient must strictly satisfy $0 < b < 1$. Non-stationary estimates ($b \ge 1.0$ or $b \le 0.0$) are explicitly rejected and flagged with `NaN` parameters without silent clipping.
 
-### 2.6 Euler–Maruyama Discretisation & Stability
-The first-order Euler–Maruyama approximation is given by:
+### 2.6 Euler-Maruyama Discretisation & Stability
+The first-order Euler-Maruyama approximation is given by:
 $$X_{t+\Delta t}^{EM} = X_t^{EM} + \theta(\mu - X_t^{EM})\Delta t + \sigma \sqrt{\Delta t} Z_t = (1 - \theta \Delta t)X_t^{EM} + \theta \mu \Delta t + \sigma \sqrt{\Delta t} Z_t$$
 - Amplification factor: $g = 1 - \theta \Delta t$.
 - Linear stability requirement: $|1 - \theta \Delta t| < 1 \iff \Delta t < \frac{2}{\theta}$.
 - If $\Delta t \ge \frac{2}{\theta}$, Euler–Maruyama becomes **explosively unstable**, whereas exact discretisation remains unconditionally stable (A-stable) for all $\Delta t > 0$.
 
-### 2.7 Standardised Spread (Z-Score) & Trading Strategy Logic
+### 2.7 Standardised Spread (Z-Score) and Trading Strategy Logic
 Normalising the continuous-time spread by its rolling equilibrium moments produces the dimensionless Z-score:
 $$s_t = \frac{X_t - \hat{\mu}_t}{\hat{\sigma}_{eq, t}}, \quad \hat{\sigma}_{eq, t} = \frac{\hat{\sigma}_t}{\sqrt{2\hat{\theta}_t}}$$
 
-#### Position Sizing & Capital Normalization
+#### Position Sizing and Capital Normalization
 To ensure total gross invested capital equals $1.0$ ($|w_A| + |w_B| = 1.0$), portfolio weights are normalized by $(1 + |\beta|)$:
 $$w_A = \frac{1}{1 + |\beta|}, \quad w_B = -\frac{\beta}{1 + |\beta|}$$
 The normalized gross return of the long spread position is:
@@ -111,13 +110,12 @@ The strategy implements a disciplined mean-reverting threshold policy:
 
 | Phase | Description | Scope / Deliverables | Status |
 | :---: | :--- | :--- | :---: |
-| **Phase 1** | **Data Collection & Preprocessing** | Download 6 NSE banking stocks (2019–2026), align trading calendars, compute log prices, generate train/test splits, validate 0 missing values. | **Completed** |
+| **Phase 1** | **Data Collection and Preprocessing** | Download 6 NSE banking stocks (2019–2026), align trading calendars, compute log prices, generate train/test splits, validate 0 missing values. | **Completed** |
 | **Phase 2** | **Pair Selection & Cointegration Analysis** | Evaluate all 15 candidate pairs on train data, OLS hedge ratios ($\beta$), Engle–Granger tests, AR(1) OU recovery, half-life filter ($5 \le t_{1/2} \le 60$). One pair passes Engle–Granger at 5%; two borderline pairs are kept for comparison. | **Completed** |
 | **Phase 3** | **OU Parameter Estimation** | Exact AR(1) mapping ($\Delta t = 1/252$), rolling 120-day calibration ($\theta, \mu, \sigma, \sigma_{eq}, t_{1/2}$), fixed $\beta$, validity flags ($0 < b < 1$), and Z-score spread generation. | **Completed** |
 | **Phase 4** | **OU Simulation & Numerical Validation** | Exact vs. Euler–Maruyama discretisation, coupled Brownian paths, stability boundaries ($\Delta t < 2/\theta$), 10,000-path Monte Carlo moment checks, and Hurwicz bias analysis. | **Completed** |
 | **Phase 5** | **Trading Strategy & Out-of-Sample Backtesting** | Out-of-sample backtesting (2024–2026, 680 days), zero look-ahead bias, 10 bps per-leg transaction costs, stop-loss protection, single-pair & equal-weighted multi-pair portfolio. | **Completed** |
 | **Phase 6** | **Performance Metrics & Benchmark Comparison** | Continuous-time OU first-passage-time (FPT) optimal thresholds, multi-strategy out-of-sample benchmarking, 2D parameter heatmaps, cost frontier sweeps, 10-point audit (10/10 passed). | **Completed** |
-| **Phase 7** | **Report, Presentation & Documentation** | Academic project report (3–4 pages), slide deck for viva defense, documentation consolidation, verification audit and corrections (see Changelog). | *In Progress* (report drafted) |
 
 ---
 
@@ -378,7 +376,7 @@ The mean-reversion trading strategy was executed on the out-of-sample period (1 
 
 \* Portfolio costs as a share of portfolio capital: $18 \times 0.40\% \times \tfrac{1}{3} = 2.40\%$. The `Total_Transaction_Costs` column in `performance_metrics.csv` reports **7.20%** for the portfolio, which is the *sum* of the three pairs' costs, each measured on that pair's own capital.
 
-**Key Empirical Findings & Financial Takeaways:**
+**Key Empirical Findings and Financial Takeaways:**
 1. **No out-of-sample edge after costs.** The portfolio earned +1.84% gross but -0.58% net over 2.7 years, while cash at 6.5% p.a. compounded to about +18.5%. The only cointegrated pair lost 3.99%.
 2. **Transaction cost drag.** Portfolio costs (2.40% of capital) exceeded the gross profit (1.84%). In Trade 1 of the primary pair, a gross gain of +0.22% became a -0.18% net loss.
 3. **Rolling parameter adaptation vs. physical reversion.** In extended trades (e.g. a 46-day HDFC–Kotak trade), the rolling 120-day mean $\hat{\mu}_t$ moved toward the drifting spread $X_t$ and triggered the take-profit exit, so the exit came from parameter movement rather than physical spread convergence.
@@ -424,7 +422,7 @@ Phase 6 grounds threshold selection in the continuous-time OU first-passage-time
 
 ---
 
-## 6. Technologies & Dependencies
+## 6. Technologies and Dependencies
 
 The implementation relies on standard scientific Python libraries:
 
@@ -620,13 +618,8 @@ python -m unittest Phase_6_Performance_Benchmark/tests/test_phase6.py
 
 ## 10. Changelog
 
-**November 2026 — verification audit and fixes**
+**November 2026 - verification audit and fixes**
 - **Fixed the take-profit exit rule** in `Phase_5_Trading_Strategy/scripts/backtest_engine.py`. The old rule `abs(z_t) <= exit_threshold` can never trigger when `exit_threshold = 0` (the FPT optimum), because a daily z-score is never exactly 0. Previously, the "Analytical Optimal (FPT)" strategy on HDFC–Kotak made **one trade held for 678 of 680 days**, reported as +11.87% with a 100% win rate and a 47-day average hold (the 47 days was the theoretical value, not the observed one). The new rule is sign-aware: a short position closes when $s_t \le s_x$, a long position when $s_t \ge -s_x$. Phase 5 results (exit 0.5) are unchanged. Phases 5 and 6 were re-run, and all tests and validators pass.
 - **Corrected README claims:** pair-selection status of the borderline pairs; portfolio transaction costs (2.40%, not 7.20%); the stop-loss interpretation; the transaction-cost break-even (≈7.5 bps per leg, not 12.5); the FPT holding-time comparison; the Monte Carlo error bound (< 0.7%, not < 0.15%). Also added the losing FPT and 1.75 / 0.25 results for all pairs, and Buy & Hold SBI, to the Phase 6 table, and regenerated the Phase 2 table from the CSV (the earlier table had stale values for most pairs).
 
 ---
-
-## 11. Planned Future Phases
-
-1. **Phase 7: Project Report & Academic Presentation (In Progress):**
-   - Final 3–4 page academic report (drafted) and viva presentation slides for MAC F244.
