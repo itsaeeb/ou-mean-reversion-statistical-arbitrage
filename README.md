@@ -635,6 +635,6 @@ rule, Rev. Financ. Stud. 19 (2006) 797–827.\
 [5] F. H. C. Marriott and J. A. Pope, Bias in the estimation of autocorrelations, Biometrika 41 (1954) 390–402.\
 [6] S. E. Shreve, Stochastic Calculus for Finance II: Continuous-Time Models, Springer, 2004.
 
-Claude (Anthropic, accessed through claude.ai) was used for analysis and validation design, write and debug Python code for the notebook. All equations, code and results were checked, run and edited by the group.
+Claude (Anthropic, accessed through claude.ai) was used for analysis and validation design, and to write and debug Python code. All equations, code and results were checked, run and edited by the group.
 
 ---
